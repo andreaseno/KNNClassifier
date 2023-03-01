@@ -1,3 +1,13 @@
+
+# resources
+# https://scikit-learn.org/stable/modules/cross_validation.html
+# https://machinelearningmastery.com/loocv-for-evaluating-machine-learning-algorithms/
+# https://stats.stackexchange.com/questions/353904/do-i-need-data-separation-in-knn
+# https://www.educba.com/python-print-table/
+# https://medium.com/@kunal_gohrani/different-types-of-distance-metrics-used-in-machine-learning-e9928c5e26c7
+# https://becominghuman.ai/machine-learning-series-day-4-k-nn-8e9ba757a419
+
+
 from random import seed
 from random import randrange
 from csv import reader
@@ -7,19 +17,34 @@ import pandas as pd
 import copy
 import time
 import numpy as np
+import seaborn
 
+#time total wallclock
+wallclockStart = time.perf_counter()
+#Load the dataset for visualization using pandas
+fname = 'digit-recognizer/train.csv'
+data = pd.read_csv(fname)
+print('First 5 rows of the dataframe')
+print(data.head())
 
-# resources
-# https://scikit-learn.org/stable/modules/cross_validation.html
-# https://machinelearningmastery.com/loocv-for-evaluating-machine-learning-algorithms/
-# https://stats.stackexchange.com/questions/353904/do-i-need-data-separation-in-knn
-# https://www.educba.com/python-print-table/
-# https://medium.com/@kunal_gohrani/different-types-of-distance-metrics-used-in-machine-learning-e9928c5e26c7
-# https://becominghuman.ai/machine-learning-series-day-4-k-nn-8e9ba757a419
-# ??should I be normalizing my data??
+# observer shape
+print('(rows by collumns): ', end='')
+print(data.shape)
+print(data.describe().T)
+numrows = data.shape[0]
 
-plt.style.use('ggplot')
+def display_row(i,listData):
+    displayList = copy.deepcopy(listData[i])
+    displayList.pop(0)
 
+    display=np.array(displayList)
+    display = display.reshape(28,28)
+    plt.imshow(display, cmap='gray')
+    plt.show()
+    
+listData = data.values.tolist()
+for i in range(20):
+    display_row(i,listData)
 
 # calulate distance
 # 0 for chebyshev, 1 for manhattan, 2 for euclidean
@@ -77,7 +102,6 @@ def predicted_class(trainingData, testRow, k, distType):
 	# assign label to the current test point based on what label is in the majority
 	return max(set(nearestLabels), key=nearestLabels.count)
 
-
 # kNN Algorithm
 def k_nearest_neighbors(trainingData, testData, k, distType):
     # create a list to store the predicted values 
@@ -132,22 +156,9 @@ def evaluate_algorithm(dataset, n_folds, k, distType):
             # sets the outcome value to none
 			row_copy[0] = None
         
-		# start = time.perf_counter()
- 
-		# # preturns list of predicted values for the outcomes of each row
-		# print("checkpoint6 trainset size is ",len(train_set)," testsize size is ",len(test_set))
 		predicted = k_nearest_neighbors(train_set, test_set, k, distType)
-		print("checkpoint7")
-	
-		# end = time.perf_counter()
-		
-		# # find elapsed time in seconds
-		# ms = (end-start) * 10**6
-		# if (extraInfo):print(f"exec_time for KNN is {ms:.03f} micro secs.")
-		# with open('KNNRuntimes.txt', 'a') as f:
-		# 	f.write(str(ms)+'\n')
-		
-        # calculate accuracy of the 
+
+        # calculate accuracy of the predictions
 		accuracy = accuracy_metric(actual, predicted)
 		scores.append(accuracy)
 	return scores
@@ -155,9 +166,8 @@ def evaluate_algorithm(dataset, n_folds, k, distType):
 def test_with_distance_type(diabetesData, testSet, distType):
 	tablerow = list()
 	# evaluate algorithm
-	nFolds = 5
-	kNumNeighbors = 6
-	print("checkpoint5")
+	nFolds = 9
+	kNumNeighbors = 1
 	# preturns list of predicted values for the outcomes of each row
 	scores = evaluate_algorithm(diabetesData, nFolds, kNumNeighbors, distType)
 	
@@ -180,118 +190,44 @@ def test_with_distance_type(diabetesData, testSet, distType):
 		row = copy.deepcopy(testSet[rowIndex])
 		if (debug): print("row number is ",rowIndex," and the row is ",row)
 		correctOutcome=row[0]
+		confMatrixAct.append(correctOutcome)
 		del row[0]
-		# print("row number is ",rowIndex," and the row is ",row)
 		label = predicted_class(testSet, row, kNumNeighbors, distType)
-		# print(' Predicted: %s, Correct Oucome: %s' % ( label, correctOutcome))
+		confMatrixPred.append(label)
 		if (label == correctOutcome): 
 			totalcorrect+=1
-			if (label == 1):
-				trueP+=1
-			else:
-				trueN+=1
-		else:
-			if (label == 1):
-				falseP+=1
-			else:
-				falseN+=1
-			
 
 		if(debug): print()
 
 	if(extraInfo):
 		print("percentage correct for test set size of %s is %s" % (totaliterations, (totalcorrect/totaliterations)*100))
-		print("False Negatives: ",falseN)
-		print("False Positives: ",falseP)
-		print("True Negatives:  ",trueN)
-		print("True Positives:  ",trueP)
 	tablerow.append((totalcorrect/totaliterations)*100)
-	tablerow.append(falseN)
-	tablerow.append(falseP)
-	tablerow.append(trueN)
-	tablerow.append(trueP)
+
 
 	return tablerow
 
 #lets debug print statements be bounded behind if statements
 debug = False
 # toggle for extra tables and info
-extraInfo = True
+extraInfo = False
 accuracytable=list()
-print("checkpoint1")
-fname = 'digit-recognizer/train.csv'
-data = pd.read_csv(fname)
-listData = data.values.tolist()
+confMatrixPred = list()
+confMatrixAct = list()
 
-num = 4
-plt.rcParams["figure.figsize"] = [7.00, 3.50]
-plt.rcParams["figure.autolayout"] = True
-# for i in range(len(listData)):
-# 	if (listData[i][0]==num):
-# num+=1
-displayList = copy.deepcopy(listData[1])
-# print(display)
-displayList.pop(0)
-print(displayList)
-display=np.array(displayList)
-display = display.reshape(28,28)
-# print(display)
-plt.imshow(display, cmap='gray')
-plt.show()
-		# break
-	# if (num <=10): break
-# print(display)
-
-x = 230
-y = 20
-for seednum in range(1,6):
+# x is data subset size and y*1000 is the threshhold value
+x = 800
+y = 60
+for seednum in range(1,2):
 	tablerow=list()
 	tablerow.append(seednum)
-	
 	seed(seednum)
-	
-	
-	print("checkpoint2")
 
-	#Load the dataset for visualization using matplotlib and pandas
-	
-	# listData = data.values.tolist()
-	print("checkpoint3")
-	# if(extraInfo):
-		#Print the first 5 rows of the dataframe.
-		# print('First 5 rows of the dataframe')
-		# print(data.head())
-
-		# # observer shape
-		# print('(rows by collumns): ', end='')
-		# print(data.shape)
-		# print(data.describe().T)
-
-		# data.hist()
-		# plt.show()
 	numrows = data.shape[0]
-	print("numcols = ",data.shape[1])
-	# for i in range(len(listData)):
-	# 	# print("row before ",listData[i])
-	# 	temp = listData[i][0]
-	# 	# print("type=",type(listData[i])," type=",type(listData[i]))
-	# 	# listData[i] = listData[i][::5]
-	# 	listData[i][0] = temp
-	# 	# print("row after  ",listData[i])
-
-	
-	# remove rows for test set
-	# testSize = int(0.1*numrows)
 	testSize = x
 	testSet = list()
 	trainSet = list()
 
-	# for i in range(testSize):
-	# 	# select random row from dataset
-	# 	rowIndex = randrange(len(listData))
-	# 	# remove from training data and add to test data (holdout)
-	# 	row = listData.pop(rowIndex)
-	# 	testSet.append(row)
+	# build test set
 	remMatrix = [0]*numrows
 	rowIndex = randrange(len(listData))
 	for i in range(testSize):
@@ -302,9 +238,7 @@ for seednum in range(1,6):
 		# remove from training data and add to test data (holdout)
 		row = copy.deepcopy(listData[rowIndex])
 		testSet.append(row)
-
-	print("test set size is", len(testSet))
-
+	# build train set
 	rowIndex = randrange(len(listData))
 	for i in range (testSize):
 		# select random row from dataset
@@ -315,29 +249,16 @@ for seednum in range(1,6):
 		row = copy.deepcopy(listData[rowIndex])
 		trainSet.append(row)
 
-
-
-	print("train set size is", len(trainSet))
 	trainDimMatrix = [0]*len(trainSet[0])
-	# print(trainRangeMatrix)
 	for i in range(len(trainSet)):
 		for j in range(1,len(trainSet[i])):
-			# if (trainSet[i][j]!=0):
 			trainDimMatrix[j]+=trainSet[i][j]
 	jcount = 0
 	lowThreshold = y*1000
-	highThreshold = numrows*255 - lowThreshold
+	highThreshold = testSize*255 - lowThreshold
 
-	for i in range(len(trainDimMatrix)) :
-		if((trainDimMatrix[i]<=lowThreshold or trainDimMatrix[i]>=highThreshold)):
-			# print("range is ",trainRangeMatrix[i][1]-trainRangeMatrix[i][0])
-			# print(i," is irrelevant")
-			jcount+=1
-	print("there are ",data.shape[1],"total dimesions with",data.shape[1]-jcount," relevant dimensions and irrelevant =  ",jcount)
 	for i in range(len(trainSet)):
 		for j in range(len(trainSet[i])-1,0,-1):
-			# if (trainRangeMatrix[j][1]-trainRangeMatrix[j][0]<255):
-				# print("range is ",trainRangeMatrix[j][1]-trainRangeMatrix[j][0])
 			if ((trainDimMatrix[j]<=lowThreshold or trainDimMatrix[j]>=highThreshold)):
 				del trainSet[i][j]
 
@@ -345,26 +266,11 @@ for seednum in range(1,6):
 	TestDimMatrix = [0]*len(testSet[0])
 	for i in range(len(testSet)):
 		for j in range(1,len(testSet[i])):
-			# if (trainSet[i][j]!=0):
 			TestDimMatrix[j]+=testSet[i][j]
-	# jcount = 0
-	# lowThreshold = 30000
-	# highThreshold = numrows*255 - lowThreshold
-
-	# for i in range(len(TestDimMatrix)) :
-	# 	if(TestDimMatrix[i]<=lowThreshold or TestDimMatrix[i]>=highThreshold):
-	# 		print(i," is irrelevant")
-	# 		jcount+=1
-	# print("there are ",data.shape[1],"total dimesions with",data.shape[1]-jcount," relevant dimensions and irrelevant =  ",jcount)
 	for i in range(len(testSet)):
 		for j in range(len(testSet[i])-1,0,-1):
 			if ((TestDimMatrix[j]<=lowThreshold or TestDimMatrix[j]>=highThreshold)):
 				del testSet[i][j]
-
-	# for i in range(1,len(trainSet)):
-	# 	if (len(trainSet[i-1])!=len(trainSet[i])):
-	# 		print("error")
-
 
 	distType = 2
 	if(extraInfo):
@@ -374,25 +280,89 @@ for seednum in range(1,6):
 			print("\nTesting with manhattan distance:\n")
 		elif(distType == 2):
 			print("\nTesting with euclidean distance:\n")
-	print("checkpoint4")
 	tablerow.extend(test_with_distance_type(trainSet, testSet, distType))
 	accuracytable.append(tablerow)
-averages = copy.deepcopy(accuracytable[0])
-
-averages[0]=("Mean Value:")
-for value in range(1,len(averages)):
-	averages[value]=0
-for row in range(len(accuracytable)):
-	for value in range(1,len(accuracytable[row])):
-		averages[value]+=float(accuracytable[row][value])
-
-
-
-for value in range(1,len(averages)):
-	averages[value]= averages[value]/len(accuracytable)
-accuracytable.append(averages)
 
 from tabulate import tabulate
 print()
-print (tabulate(accuracytable, headers=["Seed\nNumber", "Validation\nAccuracy", "Test\nAccuracy", "False\nNegatives", "False\nPositives", "True\nNegatives", "True\nPositives"]))
+print (tabulate(accuracytable, headers=["Seed\nNumber", "Validation\nAccuracy", "Test\nAccuracy"]))
 print()
+
+# Print confusion matrix
+y_actu = pd.Series(confMatrixAct, name='Actual')
+y_pred = pd.Series(confMatrixPred, name='Predicted')
+df_confusion = pd.crosstab(y_actu, y_pred)
+hm = seaborn.heatmap(data = df_confusion, cmap='Blues', annot=True)
+plt.show()
+
+# Test accuracy on differing number of k on one class
+seed(3)
+
+# build a set only containing the number 9
+kvarying = list()
+for i in range(1000):
+    if(listData[i][0]==9): 
+        row = copy.deepcopy(listData[i])
+        kvarying.append(row)
+        
+testSet = list()
+# build test set
+remMatrix = [0]*numrows
+rowIndex = randrange(len(listData))
+for i in range(800):
+    # select random row from dataset
+    while(remMatrix[rowIndex]!=0):
+        rowIndex = randrange(len(listData))
+    remMatrix[rowIndex]=1
+    # remove from training data and add to test data (holdout)
+    row = copy.deepcopy(listData[rowIndex])
+    testSet.append(row)        
+
+# perform dimension reduction
+kvaryingDimMatrix = [0]*len(testSet[0])
+for i in range(len(testSet)):
+    for j in range(1,len(testSet[i])):
+        kvaryingDimMatrix[j]+=testSet[i][j]
+for i in range(len(testSet)):
+    for j in range(len(testSet[i])-1,0,-1):
+        if ((kvaryingDimMatrix[j]<=20000 or kvaryingDimMatrix[j]>=len(testSet)*255 - 20000)):
+            del testSet[i][j]
+for i in range(len(kvarying)):
+    for j in range(len(kvarying[i])-1,0,-1):
+        if ((kvaryingDimMatrix[j]<=20000 or kvaryingDimMatrix[j]>=len(testSet)*255 - 20000)):
+            del kvarying[i][j]
+# report the results of the dimension reduction
+dimcount=0
+for i in range(len(kvaryingDimMatrix)) :
+		if(kvaryingDimMatrix[i]<=20000 or kvaryingDimMatrix[i]>=len(testSet)*255 - 20000):
+			dimcount+=1
+print("The total number of features before dimension reduction is: ", data.shape[1])
+print("The total number of features after dimension reduction is: ", data.shape[1]-dimcount)
+
+# test the accuracy
+accuracyvals = list()
+kvals = list()
+for testK in range(1,6):
+    totalcorrect=0
+    totaliterations=len(kvarying)
+    correctOutcome=0
+    # my accuracy calculation
+    for i in range(len(kvarying)):
+        # select random row from dataset
+        rowIndex = randrange(len(kvarying))
+        row = copy.deepcopy(kvarying[rowIndex])
+        correctOutcome=row[0]
+        del row[0]
+        label = predicted_class(testSet, row, testK, 2)
+        if (label == correctOutcome): 
+            totalcorrect+=1
+    print("percentage correct for k = %s is %s" % (testK, (totalcorrect/totaliterations)*100))
+    accuracyvals.append((totalcorrect/totaliterations)*100) 
+    kvals.append(testK)
+# plot the results
+plt.plot(kvals, accuracyvals)
+plt.show()
+
+wallclockEnd = time.perf_counter()
+ms = (wallclockEnd-wallclockStart)
+print("exec_time for .py file is ",ms," secs.")

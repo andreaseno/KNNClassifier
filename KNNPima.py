@@ -1,13 +1,3 @@
-from random import seed
-from random import randrange
-from csv import reader
-from math import sqrt
-import matplotlib.pyplot as plt
-import pandas as pd
-import copy
-import time
-
-
 # resources
 # https://scikit-learn.org/stable/modules/cross_validation.html
 # https://machinelearningmastery.com/loocv-for-evaluating-machine-learning-algorithms/
@@ -17,8 +7,38 @@ import time
 # https://becominghuman.ai/machine-learning-series-day-4-k-nn-8e9ba757a419
 # ??should I be normalizing my data??
 
+
+from random import seed
+from random import randrange
+from csv import reader
+from math import sqrt
+import matplotlib.pyplot as plt
+import pandas as pd
+import copy
+import time
+import seaborn
+
 plt.style.use('ggplot')
 
+#time total wallclock
+wallclockStart = time.perf_counter()
+
+fname = 'KNNPima/diabetes.csv'
+
+#Load the dataset for visualization using matplotlib and pandas
+data = pd.read_csv(fname)
+#Print the first 5 rows of the dataframe.
+print('First 5 rows of the dataframe')
+print(data.head())
+
+# observer shape
+print('(rows by collumns): ', end='')
+print(data.shape)
+print(data.describe().T)
+numrows = data.shape[0]
+
+seaborn.pairplot(data, hue='Outcome')
+plt.show()
 
 # calulate distance
 # 0 for chebyshev, 1 for manhattan, 2 for euclidean
@@ -75,7 +95,6 @@ def predicted_class(trainingData, testRow, k, distType):
 	# assign label to the current test point based on what label is in the majority
 	return max(set(nearestLabels), key=nearestLabels.count)
 
-
 # kNN Algorithm
 def k_nearest_neighbors(trainingData, testData, k, distType):
     # create a list to store the predicted values 
@@ -129,20 +148,10 @@ def evaluate_algorithm(dataset, n_folds, k, distType):
 			actual.append(row[-1])
             # sets the outcome value to none
 			row_copy[-1] = None
-        
-		# start = time.perf_counter()
- 
-		# # preturns list of predicted values for the outcomes of each row
+         
+		# returns list of predicted values for the outcomes of each row
 		predicted = k_nearest_neighbors(train_set, test_set, k, distType)
-	
-		# end = time.perf_counter()
-		
-		# # find elapsed time in seconds
-		# ms = (end-start) * 10**6
-		# if (extraInfo):print(f"exec_time for KNN is {ms:.03f} micro secs.")
-		# with open('KNNRuntimes.txt', 'a') as f:
-		# 	f.write(str(ms)+'\n')
-		
+
         # calculate accuracy of the 
 		accuracy = accuracy_metric(actual, predicted)
 		scores.append(accuracy)
@@ -152,20 +161,10 @@ def test_with_distance_type(diabetesData, testSet, distType):
 	tablerow = list()
 	# evaluate algorithm
 	nFolds = 9
-	kNumNeighbors = 5
-	start = time.perf_counter()
- 
-	# preturns list of predicted values for the outcomes of each row
+	kNumNeighbors = 5 
+	# returns list of predicted values for the outcomes of each row
 	scores = evaluate_algorithm(diabetesData, nFolds, kNumNeighbors, distType)
 
-	end = time.perf_counter()
-	
-	# find elapsed time in seconds
-	ms = (end-start) * 10**6
-	if (extraInfo):print(f"exec_time for KNN is {ms:.03f} micro secs.")
-	with open('KNNRuntimes.txt', 'a') as f:
-		f.write(str(ms)+'\n')
-	
 	if(extraInfo): print('List of Scores: ', scores)
 	tot = (sum(scores)/float(len(scores)))
 	if(extraInfo): print('Average Accuracy: ', tot)
@@ -183,26 +182,20 @@ def test_with_distance_type(diabetesData, testSet, distType):
 		# select random row from dataset
 		rowIndex = randrange(len(testSet))
 		row = copy.deepcopy(testSet[rowIndex])
-		if (debug): print("row number is ",rowIndex," and the row is ",row)
 		correctOutcome=row[8]
 		del row[8]
-		# print("row number is ",rowIndex," and the row is ",row)
 		label = predicted_class(testSet, row, kNumNeighbors, distType)
-		if(debug): print('Data=%s, Predicted: %s, Correct Oucome: %s' % (row, label, correctOutcome))
 		if (label == correctOutcome): 
 			totalcorrect+=1
-			if (label == "1"):
+			if (label == 1):
 				trueP+=1
 			else:
 				trueN+=1
 		else:
-			if (label == "1"):
+			if (label == 1):
 				falseP+=1
 			else:
 				falseN+=1
-			
-
-		if(debug): print()
 
 	if(extraInfo):
 		print("percentage correct for test set size of %s is %s" % (totaliterations, (totalcorrect/totaliterations)*100))
@@ -218,101 +211,63 @@ def test_with_distance_type(diabetesData, testSet, distType):
 
 	return tablerow
 
-#lets debug print statements be bounded behind if statements
-debug = False
 # toggle for extra tables and info
 extraInfo = False
-accuracytable=list()
+listOfTables = list()
+for distType in range(3):
+	accuracytable=list()
+	for seednum in range(1,11):
+		tablerow=list()
+		tablerow.append(seednum)
 
-with open('KNNRuntimes.txt', 'w') as f:
-	f.write("List of KNN runtimes in microseconds: \n")
+		seed(seednum)
 
+        # turn pandas dataframe into a list of lists
+		diabetesData = data.values.tolist()
 
-for seednum in range(1,11):
-	tablerow=list()
-	tablerow.append(seednum)
-	
-	seed(seednum)
-	
-	fname = 'diabetes.csv'
-	# Load a CSV file into a list
-	diabetesData = list()
-	with open(fname, 'r') as file:
-		Reader = reader(file)
-		for row in Reader:
-			if not row:
-				continue
-			else :
-				diabetesData.append(row)
+        # remove rows for test set
+		testSize = int(0.1*numrows)
+		testSet = list()
 
-	# class_names=diabetesData[0]
-	# remove the row that contains the collumn names
-	del diabetesData[0]
+		for i in range (testSize):
+			# select random row from dataset
+			rowIndex = randrange(len(diabetesData))
+            # remove from training data and add to test data (holdout)
+			row = diabetesData.pop(rowIndex)
+			testSet.append(row)
+            
+		tablerow.extend(test_with_distance_type(diabetesData, testSet, distType))
+		accuracytable.append(tablerow)
+	averages = copy.deepcopy(accuracytable[0])
 
-	#Load the dataset for visualization using matplotlib and pandas
-	data = pd.read_csv('input/diabetes.csv')
-	if(extraInfo):
-		#Print the first 5 rows of the dataframe.
-		print('First 5 rows of the dataframe')
-		print(data.head())
-
-		# observer shape
-		print('(rows by collumns): ', end='')
-		print(data.shape)
-		print(data.describe().T)
-
-		data.hist()
-		plt.show()
-	numrows = data.shape[0]
-
-
-	
-	# print(rows)
-
-
-	# turn values into floats
-	for i in range(len(diabetesData[0])-1):
-		# Convert string column to float
-		for row in diabetesData:
-			row[i] = float(row[i].strip())
-
-	# remove rows for test set
-	testSize = int(0.1*numrows)
-	testSet = list()
-
-	for i in range (testSize):
-		# select random row from dataset
-		rowIndex = randrange(len(diabetesData))
-		# remove from training data and add to test data (holdout)
-		row = diabetesData.pop(rowIndex)
-		testSet.append(row)
-	distType = 0
-	if(extraInfo):
-		if(distType == 0):
-			print("\nTesting with chebyshev distance:\n")
-		elif(distType == 1):
-			print("\nTesting with manhattan distance:\n")
-		elif(distType == 2):
-			print("\nTesting with euclidean distance:\n")
-	# print(tablerow)
-	tablerow.extend(test_with_distance_type(diabetesData, testSet, distType))
-	accuracytable.append(tablerow)
-averages = copy.deepcopy(accuracytable[0])
-
-averages[0]=("Mean Value:")
-for value in range(1,len(averages)):
-	averages[value]=0
-for row in range(len(accuracytable)):
-	for value in range(1,len(accuracytable[row])):
-		averages[value]+=float(accuracytable[row][value])
+	averages[0]=("Mean Value:")
+	for value in range(1,len(averages)):
+		averages[value]=0
+	for row in range(len(accuracytable)):
+		for value in range(1,len(accuracytable[row])):
+			averages[value]+=float(accuracytable[row][value])
 
 
 
-for value in range(1,len(averages)):
-	averages[value]= averages[value]/len(accuracytable)
-accuracytable.append(averages)
+	for value in range(1,len(averages)):
+		averages[value]= averages[value]/len(accuracytable)
+	accuracytable.append(averages)
+    
+	listOfTables.append(accuracytable)
 
 from tabulate import tabulate
-print()
-print (tabulate(accuracytable, headers=["Seed\nNumber", "Validation\nAccuracy", "Test\nAccuracy", "False\nNegatives", "False\nPositives", "True\nNegatives", "True\nPositives"]))
-print()
+#time total wallclock
+wallclockEnd = time.perf_counter()
+for i in range(len(listOfTables)):
+	print()
+	if(i == 0):
+		print("\nTesting with Chebyshev distance:\n")
+	elif(i == 1):
+		print("\nTesting with Manhattan distance:\n")
+	elif(i == 2):
+		print("\nTesting with Euclidean distance:\n")
+	print (tabulate(listOfTables[i], headers=["Seed\nNumber", "Validation\nAccuracy", "Test\nAccuracy", "False\nNegatives", "False\nPositives", "True\nNegatives", "True\nPositives"]))
+	print()
+
+ms = (wallclockEnd-wallclockStart)
+print("exec_time for .py file is ",ms," secs.")
